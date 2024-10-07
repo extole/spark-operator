@@ -209,7 +209,7 @@ func getSparkPodMemoryRequests(podSpec *v1beta2.SparkPodSpec, memoryOverheadFact
 
 	resourceList := corev1.ResourceList{
 		corev1.ResourceMemory:         *resource.NewQuantity((memoryBytes+memoryOverheadBytes)*replicas, resource.BinarySI),
-		corev1.ResourceRequestsMemory: *resource.NewQuantity((memoryBytes+memoryOverheadBytes)*replicas, resource.BinarySI),
+		// corev1.ResourceRequestsMemory: *resource.NewQuantity((memoryBytes+memoryOverheadBytes)*replicas, resource.BinarySI),
 	}
 	return resourceList, nil
 }
