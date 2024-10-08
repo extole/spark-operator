@@ -130,6 +130,7 @@ func mutateSparkPod(pod *corev1.Pod, app *v1beta2.SparkApplication) error {
 		addTerminationGracePeriodSeconds,
 		addPodLifeCycleConfig,
 		addShareProcessNamespace,
+		addMemoryLimit,
 	}
 
 	for _, option := range options {
@@ -692,6 +693,35 @@ func addShareProcessNamespace(pod *corev1.Pod, app *v1beta2.SparkApplication) er
 	}
 
 	pod.Spec.ShareProcessNamespace = shareProcessNamespace
+	return nil
+}
+
+func addMemoryLimit(pod *corev1.Pod, app *v1beta2.SparkApplication) error {
+	i := findContainer(pod)
+
+	if i < 0 {
+		return fmt.Errorf("failed to memory limit as spark container was not found")
+	}
+
+	var memoryLimit *string
+	if util.IsDriverPod(pod) {
+		memoryLimit = app.Spec.Driver.SparkPodSpec.MemoryLimit
+	} else if util.IsExecutorPod(pod) {
+		memoryLimit = app.Spec.Executor.SparkPodSpec.MemoryLimit
+	}
+
+	if memoryLimit != nil {
+		if pod.Spec.Containers[i].Resources.Limits == nil {
+			pod.Spec.Containers[i].Resources.Limits = make(corev1.ResourceList)
+		}
+
+		parsed, err := parseJavaMemoryString(*memoryLimit)
+		if err != nil {
+			return err
+		}
+
+		pod.Spec.Containers[i].Resources.Limits[corev1.ResourceMemory] = *resource.NewQuantity(parsed, resource.BinarySI)
+	}
 	return nil
 }
 
