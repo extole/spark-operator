@@ -29,6 +29,7 @@ import (
 	"github.com/kubeflow/spark-operator/pkg/apis/sparkoperator.k8s.io/v1beta2"
 	"github.com/kubeflow/spark-operator/pkg/config"
 	"github.com/kubeflow/spark-operator/pkg/util"
+	"github.com/kubeflow/spark-operator/pkg/webhook/resourceusage"
 )
 
 const (
@@ -65,6 +66,7 @@ func patchSparkPod(pod *corev1.Pod, app *v1beta2.SparkApplication) []patchOperat
 	patchOps = append(patchOps, addHostAliases(pod, app)...)
 	patchOps = append(patchOps, addContainerPorts(pod, app)...)
 	patchOps = append(patchOps, addPriorityClassName(pod, app)...)
+	patchOps = append(patchOps, addMemoryLimit(pod, app)...)
 
 	op := addSchedulerName(pod, app)
 	if op != nil {
@@ -727,6 +729,38 @@ func addHostNetwork(pod *corev1.Pod, app *v1beta2.SparkApplication) []patchOpera
 	// For Pods with hostNetwork, explicitly set its DNS policy  to “ClusterFirstWithHostNet”
 	// Detail: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
 	ops = append(ops, patchOperation{Op: "add", Path: "/spec/dnsPolicy", Value: corev1.DNSClusterFirstWithHostNet})
+	return ops
+}
+
+func addMemoryLimit(pod *corev1.Pod, app *v1beta2.SparkApplication) []patchOperation {
+	i := findContainer(pod)
+
+	if i < 0 {
+		glog.Warningf("failed to memory limit as spark container was not found")
+		return nil
+	}
+
+	var memoryLimit *string
+	if util.IsDriverPod(pod) {
+		memoryLimit = app.Spec.Driver.SparkPodSpec.MemoryLimit
+	} else if util.IsExecutorPod(pod) {
+		memoryLimit = app.Spec.Executor.SparkPodSpec.MemoryLimit
+	}
+
+	var ops []patchOperation
+
+	if memoryLimit != nil {
+		parsed, err := resourceusage.ParseJavaMemoryString(*memoryLimit)
+		if err != nil {
+			glog.Warningf("failed to parse memory limit value %s: %v", *memoryLimit, err)
+			return nil
+		}
+
+		glog.Infof("parsed memory limit value for pod %s: %s", pod.Name, parsed)
+
+		ops = append(ops, patchOperation{Op: "add", Path: fmt.Sprintf("/spec/containers/%d/resources/limits/memory", i), Value: parsed})
+	}
+
 	return ops
 }
 

@@ -2,15 +2,16 @@ package resourceusage
 
 import (
 	"fmt"
+	"math"
+	"regexp"
+	"strconv"
+	"strings"
+
 	so "github.com/kubeflow/spark-operator/pkg/apis/sparkoperator.k8s.io/v1beta2"
 	"github.com/kubeflow/spark-operator/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"math"
-	"regexp"
-	"strconv"
-	"strings"
 )
 
 // ...are you serious, Go?
@@ -87,7 +88,7 @@ var javaStringPattern = regexp.MustCompile(`([0-9]+)([a-z]+)?`)
 var javaFractionStringPattern = regexp.MustCompile(`([0-9]+\.[0-9]+)([a-z]+)?`)
 
 // Logic copied from https://github.com/apache/spark/blob/5264164a67df498b73facae207eda12ee133be7d/common/network-common/src/main/java/org/apache/spark/network/util/JavaUtils.java#L276
-func parseJavaMemoryString(str string) (int64, error) {
+func ParseJavaMemoryString(str string) (int64, error) {
 	lower := strings.ToLower(str)
 	if matches := javaStringPattern.FindStringSubmatch(lower); matches != nil {
 		value, err := strconv.ParseInt(matches[1], 10, 64)
@@ -115,7 +116,7 @@ func parseJavaMemoryString(str string) (int64, error) {
 func memoryRequiredForSparkPod(spec so.SparkPodSpec, memoryOverheadFactor *string, appType so.SparkApplicationType, replicas int64) (int64, error) {
 	var memoryBytes int64
 	if spec.Memory != nil {
-		memory, err := parseJavaMemoryString(*spec.Memory)
+		memory, err := ParseJavaMemoryString(*spec.Memory)
 		if err != nil {
 			return 0, err
 		}
@@ -125,7 +126,7 @@ func memoryRequiredForSparkPod(spec so.SparkPodSpec, memoryOverheadFactor *strin
 	}
 	var memoryOverheadBytes int64
 	if spec.MemoryOverhead != nil {
-		overhead, err := parseJavaMemoryString(*spec.MemoryOverhead)
+		overhead, err := ParseJavaMemoryString(*spec.MemoryOverhead)
 		if err != nil {
 			return 0, err
 		}
