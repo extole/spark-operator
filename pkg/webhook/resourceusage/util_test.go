@@ -5,7 +5,7 @@ import (
 )
 
 func assertMemory(memoryString string, expectedBytes int64, t *testing.T) {
-	m, err := parseJavaMemoryString(memoryString)
+	m, err := ParseJavaMemoryString(memoryString)
 	if err != nil {
 		t.Error(err)
 		return
