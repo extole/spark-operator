@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/golang/glog"
 	"github.com/kubeflow/spark-operator/api/v1beta2"
 	"github.com/kubeflow/spark-operator/pkg/common"
 	"github.com/kubeflow/spark-operator/pkg/util"
@@ -130,6 +131,7 @@ func mutateSparkPod(pod *corev1.Pod, app *v1beta2.SparkApplication) error {
 		addTerminationGracePeriodSeconds,
 		addPodLifeCycleConfig,
 		addShareProcessNamespace,
+		addMemoryLimit,
 	}
 
 	for _, option := range options {
@@ -702,6 +704,34 @@ func addShareProcessNamespace(pod *corev1.Pod, app *v1beta2.SparkApplication) er
 	}
 
 	pod.Spec.ShareProcessNamespace = shareProcessNamespace
+	return nil
+}
+
+func addMemoryLimit(pod *corev1.Pod, app *v1beta2.SparkApplication) error {
+	i := findContainer(pod)
+
+	if i < 0 {
+		glog.Warningf("failed to memory limit as spark container was not found")
+		return nil
+	}
+
+	var memoryLimit *string
+	if util.IsDriverPod(pod) {
+		memoryLimit = app.Spec.Driver.SparkPodSpec.MemoryLimit
+	} else if util.IsExecutorPod(pod) {
+		memoryLimit = app.Spec.Executor.SparkPodSpec.MemoryLimit
+	}
+
+	if memoryLimit != nil {
+		parsed, err := parseJavaMemoryString(*memoryLimit)
+		if err != nil {
+			glog.Warningf("failed to parse memory limit value %s: %v", *memoryLimit, err)
+			return nil
+		}
+		glog.Infof("parsed memory limit value for pod %s: %s", pod.Name, parsed)
+		pod.Spec.Containers[i].Resources.Limits[corev1.ResourceMemory] = *resource.NewQuantity(parsed, resource.BinarySI)
+	}
+
 	return nil
 }
 
