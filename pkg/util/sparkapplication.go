@@ -135,7 +135,11 @@ func GetExecutorLocalVolumeMounts(app *v1beta2.SparkApplication) []corev1.Volume
 }
 
 func GetDefaultUIServiceName(app *v1beta2.SparkApplication) string {
-	return fmt.Sprintf("%s-ui-svc", app.Name)
+	name := app.Name
+	if len(name) > 57 {
+		name = name[:57]
+	}
+	return fmt.Sprintf("%s-ui-svc", name)
 }
 
 func GetDefaultUIIngressName(app *v1beta2.SparkApplication) string {
