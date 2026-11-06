@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-ARG SPARK_IMAGE=docker.io/apache/spark:4.0.4@sha256:94ad730f7510002d8a1615de269f27cdeca4d4eef51657384db3fa9246b5a4d8
+ARG SPARK_IMAGE=docker.io/apache/spark:4.1.3-java21-scala@sha256:f46ecf4ce91de3145b8c6d3f55fece8acf6ca72d8cfcf7a52621e0d88970d1e9
 
 FROM golang:1.24.10 AS builder
 
